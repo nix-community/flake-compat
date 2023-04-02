@@ -25,7 +25,7 @@ Example in a `flake.nix` file:
 
   outputs = { self, nixpkgs, flake-compat }:
     let
-      eachSystem = f: nixpkgs.lib.genAttrs lib.systems.flakeExposed (system: f nixpkgs.legacyPackages.${system});
+      eachSystem = f: nixpkgs.lib.genAttrs self.lib.supportedSystems (system: f nixpkgs.legacyPackages.${system});
     in
     {
       lib.supportedSystems = [
