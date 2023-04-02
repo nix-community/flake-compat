@@ -76,22 +76,6 @@ let
     # FIXME: add Mercurial, tarball inputs.
       throw "flake input has unsupported input type '${info.type}'";
 
-  callFlake4 = flakeSrc: locks:
-    let
-      flake = import (flakeSrc + "/flake.nix");
-
-      inputs = builtins.mapAttrs
-        (n: v:
-          if v.flake or true
-          then callFlake4 (fetchTree (v.locked // v.info)) v.inputs
-          else fetchTree (v.locked // v.info))
-        locks;
-
-      outputs = flakeSrc // (flake.outputs (inputs // { self = outputs; }));
-    in
-    assert flake.edition == 201909;
-    outputs;
-
   callLocklessFlake = flakeSrc:
     let
       flake = import (flakeSrc + "/flake.nix");
@@ -157,7 +141,7 @@ let
           flake = import (sourceInfo + (if subdir != "" then "/" else "") + subdir + "/flake.nix");
 
           inputs = builtins.mapAttrs
-            (inputName: inputSpec: allNodes.${resolveInput inputSpec})
+            (_inputName: inputSpec: allNodes.${resolveInput inputSpec})
             (node.inputs or { });
 
           # Resolve a input spec into a node name. An input spec is
@@ -195,8 +179,6 @@ let
   result =
     if !(builtins.pathExists lockFilePath)
     then callLocklessFlake rootSrc
-    else if lockFile.version == 4
-    then callFlake4 rootSrc (lockFile.inputs)
     else if lockFile.version >= 5 && lockFile.version <= 7
     then allNodes.${lockFile.root}
     else throw "lock file '${lockFilePath}' has unsupported version ${toString lockFile.version}";
