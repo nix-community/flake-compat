@@ -16,10 +16,11 @@ let
   fetchTree =
     info:
     if info.type == "github" then
-      { outPath =
+      {
+        outPath =
           fetchTarball
             ({ url = "https://api.${info.host or "github.com"}/repos/${info.owner}/${info.repo}/tarball/${info.rev}"; }
-             // (if info ? narHash then { sha256 = info.narHash; } else {})
+              // (if info ? narHash then { sha256 = info.narHash; } else { })
             );
         rev = info.rev;
         shortRev = builtins.substring 0 7 info.rev;
@@ -28,12 +29,13 @@ let
         narHash = info.narHash;
       }
     else if info.type == "git" then
-      { outPath =
+      {
+        outPath =
           builtins.fetchGit
             ({ url = info.url; }
-             // (if info ? rev then { inherit (info) rev; } else {})
-             // (if info ? ref then { inherit (info) ref; } else {})
-             // (if info ? submodules then { inherit (info) submodules; } else {})
+            // (if info ? rev then { inherit (info) rev; } else { })
+            // (if info ? ref then { inherit (info) ref; } else { })
+            // (if info ? submodules then { inherit (info) submodules; } else { })
             );
         lastModified = info.lastModified;
         lastModifiedDate = formatSecondsSinceEpoch info.lastModified;
@@ -41,71 +43,79 @@ let
       } // (if info ? rev then {
         rev = info.rev;
         shortRev = builtins.substring 0 7 info.rev;
-      } else {
-      })
+      } else { })
     else if info.type == "path" then
-      { outPath = builtins.path {
-          path = if builtins.substring 0 1 info.path != "/"
+      {
+        outPath = builtins.path {
+          path =
+            if builtins.substring 0 1 info.path != "/"
             then src + ("/" + info.path)
-            else info.path; };
+            else info.path;
+        };
         narHash = info.narHash;
       }
     else if info.type == "tarball" then
-      { outPath =
+      {
+        outPath =
           fetchTarball
             ({ inherit (info) url; }
-             // (if info ? narHash then { sha256 = info.narHash; } else {})
+              // (if info ? narHash then { sha256 = info.narHash; } else { })
             );
       }
     else if info.type == "gitlab" then
-      { inherit (info) rev narHash lastModified;
+      {
+        inherit (info) rev narHash lastModified;
         outPath =
           fetchTarball
             ({ url = "https://${info.host or "gitlab.com"}/api/v4/projects/${info.owner}%2F${info.repo}/repository/archive.tar.gz?sha=${info.rev}"; }
-             // (if info ? narHash then { sha256 = info.narHash; } else {})
+              // (if info ? narHash then { sha256 = info.narHash; } else { })
             );
         shortRev = builtins.substring 0 7 info.rev;
       }
     else
-      # FIXME: add Mercurial, tarball inputs.
+    # FIXME: add Mercurial, tarball inputs.
       throw "flake input has unsupported input type '${info.type}'";
 
   callFlake4 = flakeSrc: locks:
     let
       flake = import (flakeSrc + "/flake.nix");
 
-      inputs = builtins.mapAttrs (n: v:
-        if v.flake or true
-        then callFlake4 (fetchTree (v.locked // v.info)) v.inputs
-        else fetchTree (v.locked // v.info)) locks;
+      inputs = builtins.mapAttrs
+        (n: v:
+          if v.flake or true
+          then callFlake4 (fetchTree (v.locked // v.info)) v.inputs
+          else fetchTree (v.locked // v.info))
+        locks;
 
-      outputs = flakeSrc // (flake.outputs (inputs // {self = outputs;}));
+      outputs = flakeSrc // (flake.outputs (inputs // { self = outputs; }));
     in
-      assert flake.edition == 201909;
-      outputs;
+    assert flake.edition == 201909;
+    outputs;
 
   callLocklessFlake = flakeSrc:
     let
       flake = import (flakeSrc + "/flake.nix");
       outputs = flakeSrc // (flake.outputs ({ self = outputs; }));
-    in outputs;
+    in
+    outputs;
 
-  rootSrc = let
-    # Try to clean the source tree by using fetchGit, if this source
-    # tree is a valid git repository.
-    tryFetchGit = src:
-      if isGit && !isShallow
-      then
-        let res = builtins.fetchGit src;
-        in if res.rev == "0000000000000000000000000000000000000000" then removeAttrs res ["rev" "shortRev"]  else res
-      else { outPath = src; };
-    # NB git worktrees have a file for .git, so we don't check the type of .git
-    isGit = builtins.pathExists (src + "/.git");
-    isShallow = builtins.pathExists (src + "/.git/shallow");
+  rootSrc =
+    let
+      # Try to clean the source tree by using fetchGit, if this source
+      # tree is a valid git repository.
+      tryFetchGit = src:
+        if isGit && !isShallow
+        then
+          let res = builtins.fetchGit src;
+          in if res.rev == "0000000000000000000000000000000000000000" then removeAttrs res [ "rev" "shortRev" ] else res
+        else { outPath = src; };
+      # NB git worktrees have a file for .git, so we don't check the type of .git
+      isGit = builtins.pathExists (src + "/.git");
+      isShallow = builtins.pathExists (src + "/.git/shallow");
 
-  in
+    in
     { lastModified = 0; lastModifiedDate = formatSecondsSinceEpoch 0; }
-      // (if src ? outPath then src else tryFetchGit src);
+    // (if src ? outPath then src else tryFetchGit src);
 
   # Format number of seconds in the Unix epoch as %Y%m%d%H%M%S.
   formatSecondsSinceEpoch = t:
@@ -130,7 +140,8 @@ let
       y' = y + (if m <= 2 then 1 else 0);
 
       pad = s: if builtins.stringLength s < 2 then "0" + s else s;
-    in "${toString y'}${pad (toString m)}${pad (toString d)}${pad (toString hours)}${pad (toString minutes)}${pad (toString seconds)}";
+    in
+    "${toString y'}${pad (toString m)}${pad (toString d)}${pad (toString hours)}${pad (toString minutes)}${pad (toString seconds)}";
 
   allNodes =
     builtins.mapAttrs
@@ -139,7 +150,7 @@ let
           sourceInfo =
             if key == lockFile.root
             then rootSrc
-            else fetchTree (node.info or {} // removeAttrs node.locked ["dir"]);
+            else fetchTree (node.info or { } // removeAttrs node.locked [ "dir" ]);
 
           subdir = if key == lockFile.root then "" else node.locked.dir or "";
 
@@ -147,20 +158,20 @@ let
 
           inputs = builtins.mapAttrs
             (inputName: inputSpec: allNodes.${resolveInput inputSpec})
-            (node.inputs or {});
+            (node.inputs or { });
 
           # Resolve a input spec into a node name. An input spec is
           # either a node name, or a 'follows' path from the root
           # node.
           resolveInput = inputSpec:
-              if builtins.isList inputSpec
-              then getInputByPath lockFile.root inputSpec
-              else inputSpec;
+            if builtins.isList inputSpec
+            then getInputByPath lockFile.root inputSpec
+            else inputSpec;
 
           # Follow an input path (e.g. ["dwarffs" "nixpkgs"]) from the
           # root node, returning the final node.
           getInputByPath = nodeName: path:
-            if path == []
+            if path == [ ]
             then nodeName
             else
               getInputByPath
@@ -173,11 +184,11 @@ let
           result = outputs // sourceInfo // { inherit inputs; inherit outputs; inherit sourceInfo; _type = "flake"; };
 
         in
-          if node.flake or true then
-            assert builtins.isFunction flake.outputs;
-            result
-          else
-            sourceInfo
+        if node.flake or true then
+          assert builtins.isFunction flake.outputs;
+          result
+        else
+          sourceInfo
       )
       lockFile.nodes;
 
@@ -191,14 +202,14 @@ let
     else throw "lock file '${lockFilePath}' has unsupported version ${toString lockFile.version}";
 
 in
-  rec {
-    defaultNix =
-      (builtins.removeAttrs result ["__functor"])
-      // (if result ? defaultPackage.${system} then { default = result.defaultPackage.${system}; } else {})
-      // (if result ? packages.${system}.default then { default = result.packages.${system}.default; } else {});
+rec {
+  defaultNix =
+    (builtins.removeAttrs result [ "__functor" ])
+    // (if result ? defaultPackage.${system} then { default = result.defaultPackage.${system}; } else { })
+    // (if result ? packages.${system}.default then { default = result.packages.${system}.default; } else { });
 
-    shellNix =
-      defaultNix
-      // (if result ? devShell.${system} then { default = result.devShell.${system}; } else {})
-      // (if result ? devShells.${system}.default then { default = result.devShells.${system}.default; } else {});
-  }
+  shellNix =
+    defaultNix
+    // (if result ? devShell.${system} then { default = result.devShell.${system}; } else { })
+    // (if result ? devShells.${system}.default then { default = result.devShells.${system}.default; } else { });
+}
