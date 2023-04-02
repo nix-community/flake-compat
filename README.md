@@ -11,10 +11,7 @@
 To use, add the following to your `flake.nix`:
 
 ```nix
-inputs.flake-compat = {
-  url = "github:nix-community/flake-compat";
-  flake = false;
-};
+inputs.flake-compat.url = "github:nix-community/flake-compat";
 ```
 
 Example in a `flake.nix` file:
@@ -24,10 +21,7 @@ Example in a `flake.nix` file:
   description = "My first flake";
 
   inputs.nixpkgs.url = "nixpkgs/nixos-unstable";
-  inputs.flake-compat = {
-    url = "github:nix-community/flake-compat";
-    flake = false;
-  };
+  inputs.flake-compat.url = "github:nix-community/flake-compat";
 
   outputs = { self, nixpkgs, flake-compat }:
     let
