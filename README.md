@@ -45,20 +45,21 @@ Example in a `flake.nix` file:
 Afterwards, create a `default.nix` file containing the following:
 
 ```nix
+# This file provides backward compatibility to nix < 2.4 clients
 { system ? builtins.currentSystem }:
-(import
-  (
-    let
-      lock = builtins.fromJSON (builtins.readFile ./flake.lock);
-      inherit (lock.nodes.flake-compat.locked) owner repo rev narHash;
-    in
-    fetchTarball {
-      url = "https://github.com/${owner}/${repo}/archive/${rev}.tar.gz";
-      sha256 = narHash;
-    }
-  )
-  { src = ./.; inherit system; }
-).defaultNix
+let
+  lock = builtins.fromJSON (builtins.readFile ./flake.lock);
+
+  inherit (lock.nodes.flake-compat.locked) owner repo rev narHash;
+
+  flake-compat = fetchTarball {
+    url = "https://github.com/${owner}/${repo}/archive/${rev}.tar.gz";
+    sha256 = narHash;
+  };
+
+  flake = import flake-compat { inherit system; src = ./.; };
+in
+flake.defaultNix
 ```
 
 If you would like a `shell.nix` file, create one containing the above, replacing `defaultNix` with `shellNix`.
