@@ -42,6 +42,15 @@ Example in a `flake.nix` file:
 }
 ```
 
+Update the `flake.lock` to include the hashes for `flake-compat`:
+
+```sh
+$ nix --extra-experimental-features "flakes nix-command" flake lock
+```
+You can say no to potential questions about adding additional substituters,
+public keys or other configuration, we just care about the updates to
+`flake.lock` here.
+
 Afterwards, create a `default.nix` file containing the following:
 
 ```nix
