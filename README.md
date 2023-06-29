@@ -23,7 +23,7 @@ Example in a `flake.nix` file:
   inputs.nixpkgs.url = "nixpkgs/nixos-unstable";
   inputs.flake-compat.url = "github:nix-community/flake-compat";
 
-  outputs = { self, nixpkgs, flake-compat }:
+  outputs = { self, nixpkgs, ... }:
     let
       eachSystem = f: nixpkgs.lib.genAttrs self.lib.supportedSystems (system: f nixpkgs.legacyPackages.${system});
     in
