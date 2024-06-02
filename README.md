@@ -59,7 +59,8 @@ Afterwards, create a `default.nix` file containing the following:
 let
   lock = builtins.fromJSON (builtins.readFile ./flake.lock);
 
-  inherit (lock.nodes.flake-compat.locked) owner repo rev narHash;
+  root = lock.nodes.${lock.root};
+  inherit (lock.nodes.${root.inputs.flake-compat}.locked) owner repo rev narHash;
 
   flake-compat = fetchTarball {
     url = "https://github.com/${owner}/${repo}/archive/${rev}.tar.gz";
