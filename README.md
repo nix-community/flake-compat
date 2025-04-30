@@ -4,7 +4,7 @@
 
 ## Introduction
 
-**[Nix Flakes: Using flakes project from a legacy Nix.](https://nixos.wiki/wiki/Flakes#Using_flakes_project_from_a_legacy_Nix)**
+**[Nix Flakes: Using flakes project from a legacy Nix.](https://wiki.nixos.org/wiki/Flakes#Using_flakes_project_from_a_legacy_Nix)**
 
 ## Usage
 
