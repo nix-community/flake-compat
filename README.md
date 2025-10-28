@@ -1,6 +1,6 @@
 # flake-compat
 
-> This is a maintained fork of <https://github.com/edolstra/flake-compat>
+> This fork is no-longer maintained. Flake-compat is now an official NixOS project living at <https://github.com/NixOS/flake-compat>.
 
 ## Introduction
 
