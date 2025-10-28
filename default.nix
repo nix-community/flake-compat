@@ -7,8 +7,12 @@
 
 { src, system ? builtins.currentSystem or "unknown-system" }:
 
+let makeFlakeCompat = impureOverrides:
 let
 
+  id = x: x;
+  overrideWrap' = fn: set: set // { overrideInputs = ov: fn (makeFlakeCompat ov); };
+  overrideWrap = overrideWrap' id;
   lockFilePath = src + "/flake.lock";
 
   lockFile = builtins.fromJSON (builtins.readFile lockFilePath);
@@ -101,6 +105,15 @@ let
     { lastModified = 0; lastModifiedDate = formatSecondsSinceEpoch 0; }
     // (if src ? outPath then src else tryFetchGit src);
 
+  nameValuePair = name: value:
+    { inherit name value; };
+  mapAttrs' =
+    # A function, given an attribute's name and value, returns a new `nameValuePair`.
+    f:
+    # Attribute set to map over.
+    set:
+    builtins.listToAttrs (map (attr: f attr set.${attr}) (builtins.attrNames set));
+
   # Format number of seconds in the Unix epoch as %Y%m%d%H%M%S.
   formatSecondsSinceEpoch = t:
     let
@@ -127,6 +140,11 @@ let
     in
     "${toString y'}${pad (toString m)}${pad (toString d)}${pad (toString hours)}${pad (toString minutes)}${pad (toString seconds)}";
 
+  rootOverrides =
+    mapAttrs'
+      (input: lockKey: nameValuePair lockKey (impureOverrides.${input} or null))
+      lockFile.nodes.${lockFile.root}.inputs;
+
   allNodes =
     builtins.mapAttrs
       (key: node:
@@ -134,7 +152,14 @@ let
           sourceInfo =
             if key == lockFile.root
             then rootSrc
-            else fetchTree (node.info or { } // removeAttrs node.locked [ "dir" ]);
+            else
+              if rootOverrides.${key} or null != null then
+                { type = "path";
+                  outPath = rootOverrides.${key};
+                  narHash = throw "narHash unimplemented for impureOverride";
+                }
+              else
+              fetchTree (node.info or { } // removeAttrs node.locked [ "dir" ]);
 
           subdir = if key == lockFile.root then "" else node.locked.dir or "";
 
@@ -184,14 +209,16 @@ let
     else throw "lock file '${lockFilePath}' has unsupported version ${toString lockFile.version}";
 
 in
-rec {
-  defaultNix =
-    (builtins.removeAttrs result [ "__functor" ])
-    // (if result ? defaultPackage.${system} then { default = result.defaultPackage.${system}; } else { })
-    // (if result ? packages.${system}.default then { default = result.packages.${system}.default; } else { });
+  builtins.mapAttrs (key: attr: overrideWrap' (res: res.${key}) attr)
+    (rec {
+      defaultNix =
+        (builtins.removeAttrs result ["__functor"])
+        // (if result ? defaultPackage.${system} then { default = result.defaultPackage.${system}; } else { })
+        // (if result ? packages.${system}.default then { default = result.packages.${system}.default; } else { });
+      shellNix =
+        defaultNix
+        // (if result ? devShell.${system} then { default = result.devShell.${system}; } else {})
+        // (if result ? devShells.${system}.default then { default = result.devShells.${system}.default; } else { });
+    });
 
-  shellNix =
-    defaultNix
-    // (if result ? devShell.${system} then { default = result.devShell.${system}; } else { })
-    // (if result ? devShells.${system}.default then { default = result.devShells.${system}.default; } else { });
-}
+in makeFlakeCompat {}
